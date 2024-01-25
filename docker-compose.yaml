@@ -1,0 +1,27 @@
+version: "3"
+
+services:
+  backend:
+    image: chat-api
+    container_name: chat-api
+    build:
+      context: .
+      dockerfile: ./Dockerfile
+    depends_on:
+      - mongodb
+
+
+  mongodb:
+    image: mongo
+    container_name: mongodb
+    restart: always
+    command: mongod --port 27018
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: "root"
+      MONGO_INITDB_ROOT_PASSWORD: "Anchorblock443215"
+    ports:
+      - "27018:27018"
+    volumes:
+      - /home/ubuntu/mongodb_data:/data/db:rw
+
+
