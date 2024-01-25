@@ -1,6 +1,8 @@
-# install packages 
+# install packages
 
-# start 
+# start
+
 ```
-uvicorn main:app --host 0.0.0.0 --reload
-```# chat-data-pipe
+    uvicorn main:app --host 0.0.0.0 --reload
+    docker compose up --build
+```
