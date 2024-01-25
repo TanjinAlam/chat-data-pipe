@@ -29,7 +29,7 @@ def find_data(db_name,instrument_name):
     mongo_client = get_mongo_client()
     
     today = datetime.today()
-    time_threshold = today - timedelta(minutes=1)
+    time_threshold = today - timedelta(minutes=3)
 
 
     data = mongo_client[db_name][f'{instrument_name}'].find_one({
