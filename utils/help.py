@@ -1,38 +1,35 @@
+import codecs
+import csv
 from datetime import datetime, timedelta
 import sys
 from pymongo import MongoClient
 from dotenv import load_dotenv
 import os
-
+import pandas as pd
 import pymongo
 
-def get_mongo_client():
+from motor.motor_asyncio import AsyncIOMotorClient
+
+async def get_mongo_client():
     load_dotenv()
-
-    mongo_host = os.getenv("MONGO_HOST")
-    mongo_port = int(os.getenv("MONGO_PORT"))
-    mongo_username = os.getenv("MONGO_USERNAME")
-    mongo_password = os.getenv("MONGO_PASSWORD")
-
-    client = MongoClient(
-        host=mongo_host,
-        port=mongo_port,
-        username=mongo_username,
-        password=mongo_password
-    )
+    
+    mongo_uri = os.getenv("MONGO_URI")
+    
+    client = AsyncIOMotorClient(mongo_uri, maxPoolSize=50)
 
     return client
 
 
 
-def find_data(db_name,instrument_name):
-    mongo_client = get_mongo_client()
+
+async def find_data(db_name,document_name):
+    mongo_client = await get_mongo_client()
     
     today = datetime.today()
     time_threshold = today - timedelta(minutes=3)
 
 
-    data = mongo_client[db_name][f'{instrument_name}'].find_one({
+    data = await mongo_client[db_name][f'{document_name}'].find_one({
         "$or": [
             {
                 "$and": [
@@ -48,11 +45,12 @@ def find_data(db_name,instrument_name):
             },
         ],
     })
+    print(data)
     # Check if data is found
     if data:
         # Assuming you have an "_id" field in your document
         object_id = data["_id"]
-        mongo_client[db_name][f'{instrument_name}'].update_one(
+        mongo_client[db_name][f'{document_name}'].update_one(
             {"_id": object_id},
             {"$set": {"updated_at": datetime.now()}}
         )
@@ -62,16 +60,37 @@ def find_data(db_name,instrument_name):
         return "No Data Found"
         
             
-def insert_to_mongodb(df, database_name, collection_name):
-    client = get_mongo_client()
-    
-    # Access the specified database
-    db = client[database_name]
-    
-    # Access the specified collection
-    collection = db[collection_name]
+async def insert_to_mongodb(df, database_name, document_name):
+    try: 
+        client = await get_mongo_client()
+        
+        # Access the specified database
+        db = client[database_name]
+        
+        # Access the specified collection
+        collection = db[document_name]
 
-    # Insert the list of dictionaries into the collection
-    records = df.to_dict(orient='records')
-      
-    collection.insert_many(records)
+        # Create a unique index on the "Dissemination Identifier" field
+        collection.create_index([("id", pymongo.DESCENDING)], unique=True)
+        
+        # Insert the list of dictionaries into the collection
+        records = df.to_dict(orient='records')
+        
+        collection.insert_many(records)
+        
+    except Exception as e: 
+        print(e)
+
+
+
+async def update_data(data, database_name, document_name):
+    print('data',data.id, data.text)
+    mongo_client = await get_mongo_client()
+    updated_data = await mongo_client[database_name][f'{document_name}'].update_one(
+        {"id": data.id},
+        {"$set": {"generated": data.text}}
+    )
+    if updated_data.matched_count == 1: 
+        return "document updated"
+    else: 
+        return "document update failed"
