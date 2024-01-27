@@ -35,6 +35,7 @@ async def find_data(db_name,document_name):
                 "$and": [
                     {"updated_at": {"$lt": time_threshold}},
                     {"updated_at": {"$exists": True}},
+                    {"generated": "Error"},
                 ]
             },
             {
